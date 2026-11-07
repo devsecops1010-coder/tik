@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>התיק שלי</title>
+<meta name="description" content="לוח חי של המניות שלי: פרי-מרקט, מסחר ואפטר-מרקט">
+<meta name="theme-color" content="#edf1f6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="התיק">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* layout: one narrow column; status strip → value → holdings (list | map) */
+:root{
+  --bg:#edf1f6; --ink:#0f1b2d; --ink2:#46566b; --ink3:#7a879a;
+  --card:rgba(255,255,255,.68); --card-solid:#fbfcfe; --card-b:rgba(255,255,255,.95); --line:rgba(15,27,45,.08); --line2:rgba(15,27,45,.14);
+  --up:#0b8a4a; --up-rgb:11,138,74; --down:#d63c42; --down-rgb:214,60,66; --flat:#6b778a;
+  --accent:#3550e0; --pre:#6d4ae0; --post:#c77700; --open:#0b8a4a;
+  --orb1:rgba(77,195,180,.42); --orb2:rgba(120,140,255,.36);
+  --shadow:0 1px 2px rgba(15,27,45,.04),0 10px 30px rgba(15,27,45,.07);
+  --r:20px; --font:"Heebo",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0b1220; --ink:#e9eef6; --ink2:#a8b4c6; --ink3:#6f7d92;
+  --card:rgba(20,30,50,.58); --card-solid:#141d2f; --card-b:rgba(255,255,255,.08); --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.13);
+  --up:#37d394; --up-rgb:55,211,148; --down:#ff6b6f; --down-rgb:255,107,111; --flat:#8b97a9;
+  --accent:#8fa2ff; --pre:#a88bff; --post:#ffb547; --open:#37d394;
+  --orb1:rgba(29,140,128,.30); --orb2:rgba(80,92,210,.30);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 34px rgba(0,0,0,.35);
+  color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--font);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(42vmax 42vmax at 92% -8%,var(--orb1),transparent 70%),radial-gradient(46vmax 46vmax at -10% 38%,var(--orb2),transparent 70%)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.wrap{max-width:640px;margin:0 auto;padding-block:max(12px,env(safe-area-inset-top)) max(28px,env(safe-area-inset-bottom));
+  padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));display:flex;flex-direction:column;gap:12px}
+.glass{background:var(--card);border:1px solid var(--card-b);border-radius:var(--r);box-shadow:var(--shadow);
+  -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%)}
+@media (prefers-reduced-transparency:reduce){.glass{background:var(--card-solid);-webkit-backdrop-filter:none;backdrop-filter:none}}
+.num{direction:ltr;unicode-bidi:isolate;display:inline-block}
+.up{color:var(--up)} .down{color:var(--down)} .flat{color:var(--flat)}
+.muted{color:var(--ink3)}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:10px;padding:4px 2px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:19px;letter-spacing:-.01em}
+.brand svg{width:28px;height:28px;flex:none}
+.live{margin-inline-start:auto;display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink2)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--flat);flex:none}
+.dot.on{background:var(--open);box-shadow:0 0 0 0 rgba(var(--up-rgb),.5);animation:pulse 2s infinite}
+.dot.warn{background:var(--post)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(var(--up-rgb),.45)}70%{box-shadow:0 0 0 7px rgba(var(--up-rgb),0)}100%{box-shadow:0 0 0 0 rgba(var(--up-rgb),0)}}
+@media (prefers-reduced-motion:reduce){.dot.on{animation:none}}
+.iconbtn{width:38px;height:38px;border-radius:12px;border:1px solid var(--line2);background:var(--card);display:grid;place-items:center;flex:none}
+.iconbtn svg{width:20px;height:20px}
+
+/* market strip */
+.mkt{padding:14px 16px 14px;display:flex;flex-direction:column;gap:10px}
+.mrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;font-size:13px;font-weight:500;white-space:nowrap}
+.chip i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.chip.pre{color:var(--pre);background:color-mix(in srgb,var(--pre) 13%,transparent)}
+.chip.regular{color:var(--open);background:color-mix(in srgb,var(--open) 13%,transparent)}
+.chip.post{color:var(--post);background:color-mix(in srgb,var(--post) 14%,transparent)}
+.chip.closed{color:var(--flat);background:color-mix(in srgb,var(--flat) 13%,transparent)}
+.count{font-size:14px;color:var(--ink2)}
+.clocks{margin-inline-start:auto;font-size:12.5px;color:var(--ink3);display:flex;gap:10px}
+.tl{position:relative;height:30px}
+.tl .bar{position:absolute;inset:0 0 auto 0;height:8px;display:flex;gap:3px;direction:ltr}
+.tl .seg{height:8px;border-radius:4px;opacity:.28}
+.tl .seg.s-pre{background:var(--pre)} .tl .seg.s-reg{background:var(--open);opacity:.36} .tl .seg.s-post{background:var(--post)}
+.tl .seg.active{opacity:.9}
+.tl .now{position:absolute;top:-4px;width:3px;height:16px;border-radius:2px;background:var(--ink);transform:translateX(-50%)}
+.tl .lbl{position:absolute;top:13px;font-size:11.5px;color:var(--ink3);transform:translateX(-50%);white-space:nowrap}
+
+/* hero */
+.hero{padding:16px 18px 16px;display:flex;flex-direction:column;gap:6px}
+.hero .k{font-size:13px;color:var(--ink2)}
+.hero .v{font-size:38px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.hero .lines{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:4px}
+.hl{display:flex;align-items:baseline;gap:6px;font-size:14px}
+.hl .lab{color:var(--ink2)}
+.hl b{font-weight:500}
+.breadth{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12.5px;color:var(--ink3)}
+.breadth .track{flex:1;height:6px;border-radius:3px;background:rgba(var(--down-rgb),.55);overflow:hidden;direction:ltr;max-width:220px}
+.breadth .track span{display:block;height:100%;background:var(--up)}
+.note{font-size:12.5px;color:var(--ink2);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);font-weight:500;text-decoration:underline;text-underline-offset:3px}
+.banner{padding:11px 14px;font-size:13.5px;display:flex;gap:8px;align-items:flex-start;border-radius:14px;
+  background:color-mix(in srgb,var(--post) 14%,var(--card-solid));border:1px solid color-mix(in srgb,var(--post) 30%,transparent)}
+
+/* toolbar */
+.bar2{display:flex;align-items:center;gap:8px}
+.seg2{display:inline-flex;padding:3px;border-radius:12px;background:var(--line);gap:2px}
+.seg2 button{border:0;background:none;padding:6px 14px;border-radius:9px;font-size:14px;color:var(--ink2)}
+.seg2 button[aria-pressed="true"]{background:var(--card-solid);color:var(--ink);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.sortsel{margin-inline-start:auto;appearance:none;-webkit-appearance:none;border:1px solid var(--line2);background-color:var(--card);border-radius:10px;padding:6px 12px 6px 30px;font-size:14px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink3) 50%),linear-gradient(135deg,var(--ink3) 50%,transparent 50%);background-position:16px 52%,11px 52%;background-size:5px 5px;background-repeat:no-repeat}
+
+/* holdings list */
+.list{padding:4px 0;overflow:hidden}
+.row{border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.rowbtn{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:minmax(0,1fr) 84px auto;align-items:center;gap:12px;padding:12px 16px;cursor:pointer}
+.rowbtn:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.tk{min-width:0}
+.tk .sym{font-weight:700;font-size:16px;letter-spacing:.01em;display:flex;align-items:center;gap:6px}
+.tk .sym small{font-size:10.5px;font-weight:500;color:var(--ink3);border:1px solid var(--line2);border-radius:5px;padding:0 4px;letter-spacing:.03em}
+.tk .nm{font-size:12.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spk{width:84px;height:32px;display:block}
+.px{text-align:left;display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:92px}
+.px .p{font-size:16px;font-weight:500}
+.pill{font-size:13px;font-weight:500;border-radius:8px;padding:1px 8px;min-width:64px;text-align:center}
+.pill.up{background:rgba(var(--up-rgb),.12)} .pill.down{background:rgba(var(--down-rgb),.12)} .pill.flat{background:var(--line)}
+.ext{grid-column:1/-1;margin-top:-4px;font-size:12.5px;color:var(--ink2);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ext .tag{font-size:11px;font-weight:500;border-radius:5px;padding:0 6px}
+.tag.pre{color:var(--pre);background:color-mix(in srgb,var(--pre) 13%,transparent)}
+.tag.post{color:var(--post);background:color-mix(in srgb,var(--post) 14%,transparent)}
+.tag.prev{color:var(--flat);background:var(--line)}
+.det{padding:0 16px 14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;font-size:13.5px}
+.det div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--line);padding-bottom:6px}
+.det span:first-child{color:var(--ink3)}
+.det a{grid-column:1/-1;color:var(--accent);font-weight:500;text-decoration:none;font-size:13.5px}
+.waiting{font-size:13px;color:var(--ink3)}
+
+/* map */
+.map{position:relative;overflow:hidden;padding:0}
+.tile{position:absolute;border-radius:10px;padding:7px 8px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start;gap:1px;border:0;text-align:right;color:var(--ink)}
+.tile b{font-size:14px;font-weight:700;line-height:1.15}
+.tile span{font-size:12px;font-weight:500}
+.tile em{font-style:normal;font-size:11px;opacity:.85}
+.tile.strong{color:#fff}
+.legend{display:flex;align-items:center;gap:8px;justify-content:center;font-size:12px;color:var(--ink3);padding:10px 0 2px}
+.legend .ramp{width:160px;height:8px;border-radius:4px;direction:ltr;background:linear-gradient(90deg,rgba(var(--down-rgb),.85),rgba(var(--down-rgb),.18) 45%,var(--line) 50%,rgba(var(--up-rgb),.18) 55%,rgba(var(--up-rgb),.85))}
+
+/* empty / connect */
+.empty{padding:22px 18px;display:flex;flex-direction:column;gap:12px}
+.empty h2{margin:0;font-size:19px;font-weight:700}
+.empty p{margin:0;color:var(--ink2)}
+.field{display:flex;gap:8px}
+.field input{flex:1;min-width:0;border:1px solid var(--line2);background:var(--card-solid);border-radius:12px;padding:10px 12px;font-size:15px;direction:ltr;text-align:left}
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:500;background:var(--accent);color:#fff;white-space:nowrap}
+.btn.ghost{background:var(--line);color:var(--ink)}
+.btn.danger{background:none;color:var(--down);border:1px solid color-mix(in srgb,var(--down) 40%,transparent)}
+.err{font-size:13px;color:var(--down);min-height:1em}
+
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(5,10,20,.42);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-height:88vh;overflow:auto;margin:0 auto;max-width:640px;
+  background:var(--card-solid);border-radius:22px 22px 0 0;padding:18px max(16px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  box-shadow:0 -10px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:14px}
+.sheet h2{margin:0;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.sheet p{margin:0;color:var(--ink2);font-size:14px}
+.erow{display:grid;grid-template-columns:minmax(0,1fr) 112px 36px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.erow .sym{font-weight:700}
+.erow .nm{font-size:12px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.erow input,.addrow input{width:100%;border:1px solid var(--line2);background:var(--bg);border-radius:10px;padding:8px 10px;direction:ltr;text-align:left}
+.erow .x{width:36px;height:36px;border-radius:10px;border:1px solid var(--line2);background:none;color:var(--down);font-size:18px;line-height:1}
+.addrow{display:grid;grid-template-columns:minmax(0,1fr) 112px auto;gap:8px;align-items:center}
+.est{font-size:11px;color:var(--post);font-weight:500}
+.actions{display:flex;gap:8px;justify-content:flex-start;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:max(20px,calc(env(safe-area-inset-bottom) + 12px));transform:translateX(-50%);z-index:30;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+footer{font-size:12px;color:var(--ink3);line-height:1.6;padding:4px 4px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--accent)"/><g fill="#fff"><rect x="7" y="13" width="4" height="11" rx="1.5"/><rect x="14" y="7" width="4" height="17" rx="1.5"/><rect x="21" y="16" width="4" height="8" rx="1.5"/></g></svg>
+      <span>התיק שלי</span>
+    </div>
+    <div class="live" id="live"><span class="dot" id="liveDot"></span><span id="liveTxt">מתחבר…</span></div>
+    <button class="iconbtn" id="menuBtn" aria-label="תפריט: עריכת מניות וחיבור מכשיר" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </header>
+
+  <main id="app" style="display:flex;flex-direction:column;gap:12px"></main>
+
+  <footer>
+    המחירים מ-Yahoo Finance (חינמי, עלול לפגר בכמה דקות) ומתעדכנים כל דקה בזמן פרי-מרקט, מסחר ואפטר-מרקט.
+    כמות שמסומנת ≈ חושבה משווי ומחיר שבצילום מאפליקציית הברוקר. זה לא ייעוץ השקעות.
+  </footer>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+"use strict";
+const FB = {apiKey:"AIzaSyBC3mvpnaMF-idW26lkkKpXyLo8ePE6apQ",authDomain:"ravakim-budapest.firebaseapp.com",projectId:"ravakim-budapest",
+  storageBucket:"ravakim-budapest.firebasestorage.app",messagingSenderId:"864932417069",appId:"1:864932417069:web:773c95c4c286874105f2a4"};
+const HOME_KEY = "tik.home", PREF_KEY = "tik.prefs";
+const SYM_RE = /^[A-Z0-9][A-Z0-9.\-]{0,11}$/;
+const DAYS = ["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"];
+const STATE_LABEL = {pre:"פרי-מרקט", regular:"מסחר פתוח", post:"אפטר-מרקט", closed:"השוק סגור"};
+
+let TOKEN = null, DOC = null, REF = null, UNSUB = null, CONNECTED = false, ERR = null;
+let PREFS = {view:"list", sort:"value"};
+const OPEN = new Set();
+
+const $ = (s, el) => (el || document).querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const isNum = v => typeof v === "number" && isFinite(v);
+
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function lsSet(k, v){ try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch(e){} }
+try { Object.assign(PREFS, JSON.parse(lsGet(PREF_KEY) || "{}")); } catch(e){}
+function savePrefs(){ lsSet(PREF_KEY, JSON.stringify(PREFS)); }
+
+/* ---------- formatting ---------- */
+const fmtCache = {};
+function money(v, d){
+  if (!isNum(v)) return "—";
+  const dd = d != null ? d : (Math.abs(v) < 1 ? 4 : 2);
+  const key = "m" + dd;
+  fmtCache[key] = fmtCache[key] || new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:Math.min(2, dd),maximumFractionDigits:dd});
+  return fmtCache[key].format(v);
+}
+function signedMoney(v){ if (!isNum(v)) return "—"; const s = money(Math.abs(v)); return (v > 0.0049 ? "+" : v < -0.0049 ? "−" : "") + s; }
+function pct(v){ if (!isNum(v)) return "—"; const a = Math.abs(v*100); return (v > 0.00005 ? "+" : v < -0.00005 ? "−" : "") + a.toFixed(2) + "%"; }
+function cls(v){ return !isNum(v) || Math.abs(v) < 0.00005 ? "flat" : v > 0 ? "up" : "down"; }
+function priceFmt(v, ph){ return money(v, Math.max(2, ph || 2)); }
+function n2(v){ if (!isNum(v)) return "—"; return new Intl.NumberFormat("en-US",{maximumFractionDigits: v < 10 ? 4 : 2}).format(v); }
+function compact(v){ if (!isNum(v)) return "—"; return new Intl.NumberFormat("en-US",{notation:"compact",maximumFractionDigits:1}).format(v); }
+function clock(ms, tz){ return new Intl.DateTimeFormat("he-IL",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:tz}).format(new Date(ms)); }
+function dayLabel(sd){ if (!sd) return ""; const d = new Date(sd + "T12:00:00Z"); return "יום " + DAYS[d.getUTCDay()]; }
+function nyToday(){ return new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()); }
+function ago(ms){
+  if (!ms) return "";
+  const s = Math.max(0, Math.round((Date.now() - ms)/1000));
+  if (s < 10) return "עכשיו";
+  if (s < 60) return "לפני " + s + " שנ׳";
+  const m = Math.round(s/60);
+  if (m < 60) return "לפני " + m + " דק׳";
+  return "ב-" + clock(ms, "Asia/Jerusalem");
+}
+function dur(ms){
+  const m = Math.max(0, Math.round(ms/60000)), h = Math.floor(m/60), mm = m % 60;
+  if (h >= 24){ const d = Math.floor(h/24); return (d === 1 ? "יום" : d === 2 ? "יומיים" : d + " ימים") + " ו-" + (h % 24) + " שע׳"; }
+  return h ? h + " שע׳ ו-" + mm + " דק׳" : mm + " דק׳";
+}
+
+/* ---------- model ---------- */
+function model(){
+  const pos = (DOC && Array.isArray(DOC.positions)) ? DOC.positions : [];
+  const Q = (DOC && DOC.quotes) || {};
+  const rows = pos.filter(p => p && SYM_RE.test(p.s || "")).map(p => {
+    const q = Q[p.s] || null;
+    const r = {s:p.s, nm:(q && q.nm) || p.nm || p.s, n: isNum(p.n) ? p.n : null, est: !!p.est, q};
+    if (q && isNum(q.p)){
+      const pre = q.xk === "pre" && isNum(q.x);
+      r.pre = pre;
+      r.main = pre ? q.x : q.p;
+      r.base = pre ? q.p : q.pc;
+      r.chg = isNum(r.base) && r.base > 0 ? r.main / r.base - 1 : null;
+      r.last = isNum(q.x) ? q.x : q.p;
+      if (q.xk === "post" && isNum(q.x)) r.ext = {k:"post", p:q.x, c:q.x/q.p - 1, t:q.xt};
+      else if (pre && isNum(q.pc)) r.ext = {k:"prev", p:q.p, c:q.p/q.pc - 1, sd:q.sd};
+      r.val = r.n != null ? r.n * r.last : null;
+      r.dayAbs = r.n != null && isNum(q.pc) ? r.n * (q.p - q.pc) : null;
+      r.dayBase = r.n != null && isNum(q.pc) ? r.n * q.pc : null;
+      r.extAbs = r.n != null && isNum(q.x) ? r.n * (q.x - q.p) : null;
+      r.extBase = r.n != null && isNum(q.x) ? r.n * q.p : null;
+    }
+    return r;
+  });
+  return {rows, M:(DOC && DOC.market) || null, qt:(DOC && DOC.qt) || null};
+}
+
+/* ---------- sparkline ---------- */
+function spark(q, c){
+  const W = 84, H = 32, P = 3;
+  if (!q || !Array.isArray(q.bp) || q.bp.length < 2 || !isNum(q.w0) || !isNum(q.w1)) return '<svg class="spk" viewBox="0 0 84 32" aria-hidden="true"></svg>';
+  const span = q.w1 - q.w0;
+  const ref = q.xk === "pre" ? q.p : q.pc;
+  let lo = Math.min.apply(null, q.bp), hi = Math.max.apply(null, q.bp);
+  if (isNum(ref)){ lo = Math.min(lo, ref); hi = Math.max(hi, ref); }
+  if (hi - lo < 1e-9){ hi += 1; lo -= 1; }
+  const X = t => ((t - q.w0) / span) * W;
+  const Y = v => P + (H - 2*P) * (1 - (v - lo) / (hi - lo));
+  const segs = {pre:[], reg:[], post:[]};
+  let prevKey = null, prevPt = null;
+  q.bm.forEach((m, i) => {
+    const t = q.bt0 + m*60000, v = q.bp[i];
+    if (!isNum(v)) return;
+    const key = t < q.r0 ? "pre" : t >= q.r1 ? "post" : "reg";
+    const pt = X(t).toFixed(1) + "," + Y(v).toFixed(1);
+    if (prevKey && key !== prevKey) segs[key].push(prevPt);
+    segs[key].push(pt); prevKey = key; prevPt = pt;
+  });
+  const color = c === "up" ? "var(--up)" : c === "down" ? "var(--down)" : "var(--flat)";
+  const band = '<rect x="' + X(q.r0).toFixed(1) + '" y="0" width="' + (X(q.r1) - X(q.r0)).toFixed(1) + '" height="' + H + '" fill="var(--line)" rx="3"/>';
+  const refLine = isNum(ref) ? '<line x1="0" x2="' + W + '" y1="' + Y(ref).toFixed(1) + '" y2="' + Y(ref).toFixed(1) + '" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="2 3" opacity=".7"/>' : "";
+  const path = (pts, op) => pts.length > 1 ? '<polyline points="' + pts.join(" ") + '" fill="none" stroke="' + color + '" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" opacity="' + op + '"/>' : "";
+  return '<svg class="spk" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true" style="direction:ltr">' + band + refLine + path(segs.pre, .5) + path(segs.reg, 1) + path(segs.post, .5) + '</svg>';
+}
+
+/* ---------- treemap ---------- */
+function squarify(items, W, H){
+  const out = [], total = items.reduce((a, b) => a + b.v, 0);
+  if (!total) return out;
+  const scale = W * H / total;
+  const nodes = items.map(it => ({it, a: it.v * scale}));
+  let x = 0, y = 0, w = W, h = H, row = [];
+  const worst = (r, len) => {
+    const s = r.reduce((a, b) => a + b.a, 0), mx = Math.max.apply(null, r.map(n => n.a)), mn = Math.min.apply(null, r.map(n => n.a));
+    return Math.max(len*len*mx/(s*s), (s*s)/(len*len*mn));
+  };
+  const place = r => {
+    const s = r.reduce((a, b) => a + b.a, 0);
+    if (w >= h){ const cw = s / h; let yy = y; r.forEach(n => { const rh = n.a / cw; out.push({it:n.it, x, y:yy, w:cw, h:rh}); yy += rh; }); x += cw; w -= cw; }
+    else { const rh = s / w; let xx = x; r.forEach(n => { const rw = n.a / rh; out.push({it:n.it, x:xx, y, w:rw, h:rh}); xx += rw; }); y += rh; h -= rh; }
+  };
+  while (nodes.length){
+    const len = Math.min(w, h), n = nodes[0];
+    if (!row.length || worst(row.concat(n), len) <= worst(row, len)){ row.push(n); nodes.shift(); }
+    else { place(row); row = []; }
+  }
+  if (row.length) place(row);
+  return out;
+}
+
+/* ---------- render ---------- */
+function render(){
+  const app = $("#app");
+  $("#menuBtn").hidden = !TOKEN;
+  if (!TOKEN){ app.innerHTML = connectCard(); bindConnect(); setLive("off", "לא מחובר"); return; }
+  if (!DOC){
+    app.innerHTML = '<section class="glass empty"><h2>טוען את התיק…</h2><p>' + (ERR ? esc(ERR) : "מתחבר לשרת הנתונים.") + '</p></section>';
+    return;
+  }
+  const {rows, M, qt} = model();
+  const parts = [];
+  parts.push(marketCard(M));
+  const stale = staleInfo(M, qt);
+  if (stale) parts.push('<div class="banner" role="status"><span aria-hidden="true">⚠︎</span><span>' + stale + '</span></div>');
+  parts.push(heroCard(rows, M));
+  if (!rows.length){
+    parts.push('<section class="glass empty"><h2>אין עדיין מניות בתיק</h2><p>הוסף את המניות שלך, והמחירים יופיעו תוך דקה.</p><div class="actions"><button class="btn" data-act="edit">הוספת מניות</button></div></section>');
+  } else {
+    parts.push('<div class="bar2"><div class="seg2" role="group" aria-label="תצוגה">' +
+      '<button data-view="list" aria-pressed="' + (PREFS.view === "list") + '">רשימה</button>' +
+      '<button data-view="map" aria-pressed="' + (PREFS.view === "map") + '">מפה</button></div>' +
+      '<label class="muted" for="sortSel" style="font-size:13px;margin-inline-start:auto">מיון</label>' +
+      '<select class="sortsel" id="sortSel" style="margin-inline-start:0">' +
+      [["value","לפי שווי"],["chg","לפי שינוי"],["alpha","לפי שם"]].map(o => '<option value="' + o[0] + '"' + (PREFS.sort === o[0] ? " selected" : "") + '>' + o[1] + '</option>').join("") +
+      '</select></div>');
+    const sorted = sortRows(rows);
+    parts.push(PREFS.view === "map" ? '<section class="glass map" id="map" aria-label="מפת חום של התיק"></section><div class="legend"><span>ירידה</span><span class="ramp"></span><span>עלייה</span></div>'
+                                     : '<section class="glass list" aria-label="המניות בתיק">' + sorted.map(rowHtml).join("") + '</section>');
+  }
+  app.innerHTML = parts.join("");
+  if (PREFS.view === "map" && rows.length) drawMap(sortRows(rows));
+  bindMain();
+  tick();
+}
+
+function sortRows(rows){
+  const r = rows.slice();
+  if (PREFS.sort === "alpha") r.sort((a, b) => a.s.localeCompare(b.s));
+  else if (PREFS.sort === "chg") r.sort((a, b) => (isNum(b.chg) ? b.chg : -9) - (isNum(a.chg) ? a.chg : -9));
+  else r.sort((a, b) => (isNum(b.val) ? b.val : -1) - (isNum(a.val) ? a.val : -1));
+  return r;
+}
+
+function marketCard(M){
+  if (!M) return '<section class="glass mkt"><div class="mrow"><span class="chip closed"><i></i>ממתין לנתוני שוק</span></div></section>';
+  const st = M.state in STATE_LABEL ? M.state : "closed";
+  const span = M.postE - M.preS;
+  const w = (a, b) => ((b - a) / span * 100).toFixed(2) + "%";
+  const pos = v => ((v - M.preS) / span * 100).toFixed(2) + "%";
+  const now = Date.now();
+  const inWin = now >= M.preS && now <= M.postE;
+  const segCls = k => "seg s-" + k + ((st === "pre" && k === "pre") || (st === "regular" && k === "reg") || (st === "post" && k === "post") ? " active" : "");
+  return '<section class="glass mkt" aria-label="מצב השוק">' +
+    '<div class="mrow"><span class="chip ' + st + '"><i></i>' + STATE_LABEL[st] + '</span>' +
+    '<span class="count" id="countdown"></span>' +
+    '<span class="clocks"><span>ניו יורק <b class="num" id="clkNY"></b></span><span>ישראל <b class="num" id="clkIL"></b></span></span></div>' +
+    '<div class="tl" aria-hidden="true"><div class="bar">' +
+      '<div class="' + segCls("pre") + '" style="width:' + w(M.preS, M.regS) + '"></div>' +
+      '<div class="' + segCls("reg") + '" style="width:' + w(M.regS, M.regE) + '"></div>' +
+      '<div class="' + segCls("post") + '" style="width:' + w(M.regE, M.postE) + '"></div></div>' +
+      (inWin ? '<div class="now" id="nowMark" style="left:' + pos(now) + '"></div>' : "") +
+      '<span class="lbl" style="left:0;transform:none">' + clock(M.preS, "Asia/Jerusalem") + '</span>' +
+      '<span class="lbl" style="left:' + pos(M.regS) + '">' + clock(M.regS, "Asia/Jerusalem") + '</span>' +
+      '<span class="lbl" style="left:' + pos(M.regE) + '">' + clock(M.regE, "Asia/Jerusalem") + '</span>' +
+      '<span class="lbl" style="left:100%;transform:translateX(-100%)">' + clock(M.postE, "Asia/Jerusalem") + '</span>' +
+    '</div></section>';
+}
+
+function heroCard(rows, M){
+  const withVal = rows.filter(r => isNum(r.val));
+  const total = withVal.reduce((a, r) => a + r.val, 0);
+  const sum = (k) => rows.reduce((a, r) => a + (isNum(r[k]) ? r[k] : 0), 0);
+  const day = sum("dayAbs"), dayB = sum("dayBase"), ext = sum("extAbs"), extB = sum("extBase");
+  const anyPre = rows.some(r => r.pre), anyPost = rows.some(r => r.q && r.q.xk === "post" && isNum(r.q.x));
+  const sds = rows.map(r => r.q && r.q.sd).filter(Boolean);
+  const sd = sds.sort((a, b) => sds.filter(v => v === b).length - sds.filter(v => v === a).length)[0];
+  const dayLab = sd && sd === nyToday() && M && M.state !== "pre" ? "היום" : (sd ? "ב" + dayLabel(sd) : "יום אחרון");
+  const lines = [];
+  if (anyPre && extB) lines.push(hl("פרי-מרקט", ext, ext/extB, "pre"));
+  if (dayB) lines.push(hl(anyPre ? "סגירה, " + dayLabel(sd) : dayLab, day, day/dayB));
+  if (!anyPre && anyPost && extB) lines.push(hl("אפטר-מרקט", ext, ext/extB, "post"));
+  const ups = rows.filter(r => cls(r.chg) === "up").length, downs = rows.filter(r => cls(r.chg) === "down").length;
+  const est = rows.some(r => r.est), unknown = rows.filter(r => r.n == null).length;
+  const breadth = ups + downs ? '<div class="breadth"><span class="up">' + ups + ' עולות</span><span class="track"><span style="width:' + (ups/(ups+downs)*100).toFixed(1) + '%"></span></span><span class="down">' + downs + ' יורדות</span></div>' : "";
+  const notes = [];
+  if (est) notes.push('<span>≈ חלק מהכמויות מוערכות מהצילום.</span> <button class="linkbtn" data-act="edit">עדכון כמויות</button>');
+  if (unknown) notes.push('<span>' + unknown + ' מניות בלי כמות, לא נספרות בשווי.</span>');
+  return '<section class="glass hero" aria-label="שווי התיק">' +
+    '<span class="k">שווי התיק' + (est ? " ≈" : "") + '</span>' +
+    '<span class="v num">' + (withVal.length ? money(total, 2) : "—") + '</span>' +
+    (lines.length ? '<div class="lines">' + lines.join("") + '</div>' : "") + breadth +
+    (notes.length ? '<div class="note">' + notes.join(" ") + '</div>' : "") + '</section>';
+}
+function hl(label, abs, p, tag){
+  return '<span class="hl"><span class="lab">' + (tag ? '<span class="tag ' + tag + '" style="font-size:12px;border-radius:6px;padding:1px 7px">' + label + '</span>' : label) +
+    '</span><b class="num ' + cls(p) + '">' + signedMoney(abs) + '</b><span class="num ' + cls(p) + '">(' + pct(p) + ')</span></span>';
+}
+
+function rowHtml(r){
+  const q = r.q, c = cls(r.chg), open = OPEN.has(r.s);
+  const badge = q && q.ty === "ETF" ? '<small>ETF</small>' : "";
+  let right;
+  if (!q || !isNum(q.p)) right = '<div class="px"><span class="waiting">ממתין לנתונים…</span></div>';
+  else right = '<div class="px"><span class="p num">' + priceFmt(r.main, q.ph) + '</span><span class="pill num ' + c + '">' + pct(r.chg) + '</span></div>';
+  let ext = "";
+  if (r.ext){
+    const lab = r.ext.k === "post" ? "אפטר-מרקט" : r.pre ? "סגירה " + dayLabel(r.ext.sd) : "";
+    const tagK = r.ext.k === "post" ? "post" : "prev";
+    ext = '<div class="ext">' + (r.pre ? '<span class="tag pre">פרי-מרקט</span>' : "") +
+      '<span class="tag ' + tagK + '">' + lab + '</span><span class="num">' + priceFmt(r.ext.p, q.ph) + '</span><span class="num ' + cls(r.ext.c) + '">' + pct(r.ext.c) + '</span>' +
+      (r.ext.k === "post" && r.ext.t ? '<span class="muted">' + clock(r.ext.t, "America/New_York") + ' NY</span>' : "") + '</div>';
+  }
+  let det = "";
+  if (open){
+    const pair = (k, v) => '<div><span>' + k + '</span><span class="num">' + v + '</span></div>';
+    det = '<div class="det">' +
+      pair("כמות" + (r.est ? " ≈" : ""), r.n != null ? n2(r.n) : "לא הוזנה") +
+      pair("שווי", isNum(r.val) ? money(r.val, 2) : "—") +
+      pair("שינוי ב" + (q && q.sd ? dayLabel(q.sd) : "יום"), isNum(r.dayAbs) ? '<span class="' + cls(r.dayAbs) + '">' + signedMoney(r.dayAbs) + '</span>' : "—") +
+      pair("סגירה קודמת", q ? priceFmt(q.pc, q.ph) : "—") +
+      pair("טווח יום", q && isNum(q.lo) ? priceFmt(q.lo, q.ph) + " – " + priceFmt(q.hi, q.ph) : "—") +
+      pair("טווח 52 שבועות", q && isNum(q.l52) ? priceFmt(q.l52, q.ph) + " – " + priceFmt(q.h52, q.ph) : "—") +
+      pair("מחזור", q ? compact(q.vol) : "—") +
+      pair("עודכן", q && q.pt ? clock(q.pt, "America/New_York") + " NY" : "—") +
+      '<a href="https://finance.yahoo.com/quote/' + encodeURIComponent(r.s) + '" target="_blank" rel="noopener">פתיחה ב-Yahoo Finance ↗</a></div>';
+  }
+  return '<div class="row" id="row-' + esc(r.s) + '"><button class="rowbtn" data-sym="' + esc(r.s) + '" aria-expanded="' + open + '">' +
+    '<div class="tk"><div class="sym"><span class="num">' + esc(r.s) + '</span>' + badge + '</div><div class="nm" dir="ltr" style="text-align:right">' + esc(r.nm) + '</div></div>' +
+    spark(q, c) + right + ext + '</button>' + det + '</div>';
+}
+
+function drawMap(rows){
+  const el = $("#map"); if (!el) return;
+  const W = el.clientWidth, H = Math.round(Math.min(620, Math.max(320, W * 1.05)));
+  el.style.height = H + "px";
+  const items = rows.filter(r => isNum(r.val) && r.val > 0).map(r => ({v:r.val, r}));
+  if (!items.length){ el.innerHTML = '<p class="waiting" style="padding:18px">אין עדיין שווי להצגה. הוסף כמויות למניות.</p>'; el.style.height = "auto"; return; }
+  items.sort((a, b) => b.v - a.v);
+  const G = 2;
+  el.innerHTML = squarify(items, W, H).map(b => {
+    const r = b.it.r, c = r.chg, mag = isNum(c) ? Math.min(1, Math.abs(c) / 0.05) : 0;
+    const rgb = isNum(c) && c < 0 ? "var(--down-rgb)" : "var(--up-rgb)";
+    const bg = !isNum(c) || Math.abs(c) < 0.00005 ? "var(--line2)" : "rgba(" + rgb + "," + (0.16 + 0.7 * mag).toFixed(2) + ")";
+    const left = W - b.x - b.w;
+    const big = b.w > 74 && b.h > 64, mid = b.w > 50 && b.h > 42, small = b.w > 38 && b.h > 22;
+    const label = mid ? '<b class="num">' + esc(r.s) + '</b><span class="num">' + pct(c) + '</span>' + (big ? '<em class="num">' + money(r.val, 0) + '</em>' : "")
+                : small ? '<b class="num" style="font-size:11.5px">' + esc(r.s) + '</b>' : "";
+    return '<button class="tile' + (mag > 0.55 ? " strong" : "") + '" data-go="' + esc(r.s) + '" aria-label="' + esc(r.s) + " " + pct(c) + '" style="left:' + (left + G/2).toFixed(1) + 'px;top:' + (b.y + G/2).toFixed(1) + 'px;width:' + Math.max(0, b.w - G).toFixed(1) + 'px;height:' + Math.max(0, b.h - G).toFixed(1) + 'px;background:' + bg + (small && !mid ? ';padding:3px 6px' : "") + '">' + label + '</button>';
+  }).join("");
+}
+
+function staleInfo(M, qt){
+  if (!qt) return "עוד לא הגיעו מחירים מהשרת. אם זה נמשך יותר מכמה דקות, השרת שמושך את הנתונים כבוי.";
+  const age = Date.now() - qt;
+  if (M && M.state !== "closed" && age > 4*60000) return "המחירים לא התעדכנו מאז " + clock(qt, "Asia/Jerusalem") + ". השרת שמושך את הנתונים אולי כבוי.";
+  if (age > 45*60000) return "המחירים לא התעדכנו מאז " + clock(qt, "Asia/Jerusalem") + ".";
+  return "";
+}
+
+function setLive(kind, txt){
+  const d = $("#liveDot"); d.className = "dot" + (kind === "on" ? " on" : kind === "warn" ? " warn" : "");
+  $("#liveTxt").textContent = txt;
+}
+
+function tick(){
+  const M = DOC && DOC.market, qt = DOC && DOC.qt, now = Date.now();
+  if (TOKEN){
+    if (!CONNECTED) setLive("warn", "מנותק, מנסה שוב…");
+    else if (qt) setLive(M && M.state !== "closed" && now - qt < 4*60000 ? "on" : "idle", "עודכן " + ago(qt));
+    else setLive("idle", "מחובר, ממתין למחירים");
+  }
+  const ny = $("#clkNY"), il = $("#clkIL");
+  if (ny) ny.textContent = clock(now, "America/New_York");
+  if (il) il.textContent = clock(now, "Asia/Jerusalem");
+  const cd = $("#countdown");
+  if (cd && M){
+    let t = "";
+    if (M.state === "pre") t = "המסחר נפתח בעוד " + dur(M.regS - now);
+    else if (M.state === "regular") t = "נסגר בעוד " + dur(M.regE - now) + (M.early ? " (יום מקוצר)" : "");
+    else if (M.state === "post") t = "האפטר-מרקט נגמר בעוד " + dur(M.postE - now);
+    else if (M.preS > now) t = "הפרי-מרקט נפתח בעוד " + dur(M.preS - now) + " (" + dayLabel(M.day) + ")";
+    cd.textContent = t;
+  }
+  const mark = $("#nowMark");
+  if (mark && M) mark.style.left = ((now - M.preS) / (M.postE - M.preS) * 100).toFixed(2) + "%";
+}
+
+/* ---------- events ---------- */
+function bindMain(){
+  document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => { PREFS.view = b.dataset.view; savePrefs(); render(); });
+  const ss = $("#sortSel"); if (ss) ss.onchange = () => { PREFS.sort = ss.value; savePrefs(); render(); };
+  document.querySelectorAll(".rowbtn").forEach(b => b.onclick = () => { const s = b.dataset.sym; OPEN.has(s) ? OPEN.delete(s) : OPEN.add(s); render(); const el = document.getElementById("row-" + s); if (el) el.querySelector(".rowbtn").focus({preventScroll:true}); });
+  document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { const s = b.dataset.go; PREFS.view = "list"; savePrefs(); OPEN.add(s); render(); const el = document.getElementById("row-" + s); if (el) el.scrollIntoView({block:"center", behavior:"smooth"}); });
+  document.querySelectorAll('[data-act="edit"]').forEach(b => b.onclick = openEditor);
+}
+
+/* ---------- connect ---------- */
+function connectCard(){
+  return '<section class="glass empty"><h2>חיבור התיק</h2><p>פתח במכשיר הזה את הקישור האישי של התיק, או הדבק אותו כאן.</p>' +
+    '<div class="field"><input id="homeIn" placeholder="https://…#home=…" autocomplete="off" aria-label="קישור התיק"><button class="btn" id="homeGo">חבר</button></div><div class="err" id="homeErr"></div></section>';
+}
+function bindConnect(){
+  const go = () => {
+    const v = ($("#homeIn").value || "").trim(), m = v.match(/(?:home=)?([0-9a-f]{20,40})\s*$/i);
+    if (!m){ $("#homeErr").textContent = "זה לא נראה כמו קישור של התיק. העתק את הקישור המלא."; return; }
+    setToken(m[1].toLowerCase());
+  };
+  $("#homeGo").onclick = go;
+  $("#homeIn").oninput = () => { $("#homeErr").textContent = ""; };
+  $("#homeIn").onkeydown = e => { if (e.key === "Enter") go(); };
+}
+function setToken(t){
+  TOKEN = t; lsSet(HOME_KEY, t);
+  if (location.hash.indexOf("home=") < 0) history.replaceState(null, "", location.pathname + location.search + "#home=" + t);
+  DOC = null; connect(); render();
+}
+function homeLink(){ return location.origin + location.pathname + "#home=" + TOKEN; }
+
+/* ---------- firestore ---------- */
+function connect(){
+  if (UNSUB){ try { UNSUB(); } catch(e){} UNSUB = null; }
+  if (!window.firebase || !firebase.firestore){ ERR = "לא הצלחתי לטעון את Firebase. בדוק חיבור לאינטרנט."; render(); return; }
+  if (!firebase.apps.length){
+    firebase.initializeApp(FB);
+    try { firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(() => {}); } catch(e){}
+  }
+  REF = firebase.firestore().collection("board").doc(TOKEN);
+  UNSUB = REF.onSnapshot(snap => {
+    CONNECTED = !snap.metadata.fromCache; ERR = null;
+    DOC = snap.exists ? snap.data() : {};
+    render();
+  }, err => {
+    CONNECTED = false;
+    ERR = err && err.code === "permission-denied" ? "אין הרשאה לקרוא את התיק. הקישור לא נכון, או שהשרת עוד לא הוגדר." : "החיבור נכשל, מנסה שוב.";
+    render(); setTimeout(connect, 15000);
+  });
+}
+
+/* ---------- editor ---------- */
+let EDIT = null;
+function openEditor(){
+  EDIT = ((DOC && DOC.positions) || []).map(p => ({s:p.s, nm:p.nm || "", n: isNum(p.n) ? p.n : null, est: !!p.est}));
+  const Q = (DOC && DOC.quotes) || {};
+  EDIT.forEach(p => { if (Q[p.s] && Q[p.s].nm) p.nm = Q[p.s].nm; });
+  sheet('<h2>המניות שלי <button class="iconbtn" data-close aria-label="סגירה">✕</button></h2>' +
+    '<p>הכמות היא מספר המניות שאתה מחזיק. אפשר שבר, למשל 0.3343. כמות ריקה: המניה מוצגת בלי שווי.</p>' +
+    '<div id="eList"></div>' +
+    '<div class="addrow"><input id="addSym" placeholder="סימול, למשל MSFT" autocapitalize="characters" autocomplete="off" aria-label="סימול להוספה"><input id="addN" inputmode="decimal" placeholder="כמות" aria-label="כמות"><button class="btn ghost" id="addBtn">הוספה</button></div>' +
+    '<div class="err" id="eErr"></div>' +
+    '<div class="actions"><button class="btn" id="eSave">שמירה</button><button class="btn ghost" data-close>ביטול</button></div>');
+  drawEditList();
+  $("#addBtn").onclick = addRow;
+  $("#addSym").onkeydown = e => { if (e.key === "Enter") addRow(); };
+  $("#addSym").oninput = $("#addN").oninput = () => { $("#eErr").textContent = ""; };
+  $("#eSave").onclick = saveEditor;
+}
+function drawEditList(){
+  $("#eList").innerHTML = EDIT.map((p, i) => '<div class="erow"><div style="min-width:0"><div class="sym num">' + esc(p.s) + (p.est ? ' <span class="est">≈ מוערך</span>' : "") + '</div><div class="nm" dir="ltr" style="text-align:right">' + esc(p.nm) + '</div></div>' +
+    '<input data-i="' + i + '" inputmode="decimal" value="' + (p.n != null ? p.n : "") + '" aria-label="כמות ' + esc(p.s) + '">' +
+    '<button class="x" data-del="' + i + '" aria-label="הסרת ' + esc(p.s) + '">×</button></div>').join("") || '<p>אין מניות. הוסף את הראשונה למטה.</p>';
+  document.querySelectorAll("#eList input").forEach(inp => inp.oninput = () => { $("#eErr").textContent = ""; });
+  document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { readInputs(); EDIT.splice(+b.dataset.del, 1); drawEditList(); });
+}
+function parseN(v){ v = String(v).trim().replace(",", "."); if (!v) return {ok:true, n:null}; const n = Number(v); return isFinite(n) && n >= 0 ? {ok:true, n} : {ok:false}; }
+function readInputs(){
+  let bad = null;
+  document.querySelectorAll("#eList input").forEach(inp => {
+    const p = EDIT[+inp.dataset.i], r = parseN(inp.value);
+    if (!r.ok){ bad = p.s; return; }
+    if (r.n !== p.n){ p.n = r.n; p.est = false; }
+  });
+  return bad;
+}
+function addRow(){
+  const bad = readInputs();
+  const s = ($("#addSym").value || "").trim().toUpperCase(), r = parseN($("#addN").value);
+  if (bad){ $("#eErr").textContent = "הכמות של " + bad + " לא תקינה."; return; }
+  if (!SYM_RE.test(s)){ $("#eErr").textContent = "סימול לא תקין. כתוב סימול כמו AAPL או BRK.B."; return; }
+  if (EDIT.some(p => p.s === s)){ $("#eErr").textContent = s + " כבר ברשימה."; return; }
+  if (!r.ok){ $("#eErr").textContent = "הכמות לא תקינה."; return; }
+  if (EDIT.length >= 100){ $("#eErr").textContent = "אפשר עד 100 מניות."; return; }
+  EDIT.push({s, nm:"", n:r.n, est:false});
+  $("#addSym").value = ""; $("#addN").value = "";
+  drawEditList(); $("#addSym").focus();
+}
+function saveEditor(){
+  const bad = readInputs();
+  if (bad){ $("#eErr").textContent = "הכמות של " + bad + " לא תקינה."; return; }
+  const btn = $("#eSave"); btn.disabled = true; btn.textContent = "שומר…";
+  const positions = EDIT.map(p => ({s:p.s, nm:p.nm || "", n:p.n, est:!!p.est}));
+  REF.set({positions, pt: Date.now()}, {merge:true}).then(() => { closeSheet(); toast("נשמר. מניות חדשות יקבלו מחיר תוך דקה."); render(); })
+    .catch(e => { btn.disabled = false; btn.textContent = "שמירה"; $("#eErr").textContent = "השמירה נכשלה" + (e && e.code === "permission-denied" ? ": אין הרשאה." : ". בדוק חיבור ונסה שוב."); });
+}
+
+/* ---------- menu / connect device ---------- */
+function openMenu(){
+  sheet('<h2>התיק <button class="iconbtn" data-close aria-label="סגירה">✕</button></h2>' +
+    '<div class="actions"><button class="btn" data-act="edit">עריכת מניות וכמויות</button></div>' +
+    '<h2 style="font-size:16px;margin-top:6px">חיבור מכשיר נוסף</h2>' +
+    '<p>פתח את הקישור הזה בטלפון או במחשב השני. כל מי שיש לו את הקישור רואה את התיק, אז אל תשתף אותו.</p>' +
+    '<div class="field"><input id="linkOut" readonly value="' + esc(homeLink()) + '" aria-label="קישור התיק"><button class="btn ghost" id="copyBtn">העתקה</button></div>' +
+    '<p style="font-size:13px">באייפון: פתח ב-Safari, שיתוף ← "הוסף למסך הבית". באנדרואיד: תפריט ← "הוספה למסך הבית".</p>' +
+    '<div class="actions"><button class="btn danger" id="forget">ניתוק המכשיר הזה</button></div>');
+  document.querySelectorAll('.sheet [data-act="edit"]').forEach(b => b.onclick = () => { closeSheet(); openEditor(); });
+  $("#copyBtn").onclick = () => {
+    const inp = $("#linkOut");
+    const done = () => toast("הקישור הועתק");
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(inp.value).then(done, () => { inp.select(); });
+    else inp.select();
+  };
+  $("#forget").onclick = () => { if (UNSUB) UNSUB(); UNSUB = null; lsSet(HOME_KEY, null); TOKEN = null; DOC = null; closeSheet(); history.replaceState(null, "", location.pathname); render(); };
+}
+
+function sheet(html){
+  closeSheet();
+  const scrim = document.createElement("div"); scrim.className = "scrim"; scrim.onclick = closeSheet;
+  const sh = document.createElement("div"); sh.className = "sheet"; sh.setAttribute("role", "dialog"); sh.setAttribute("aria-modal", "true"); sh.innerHTML = html;
+  document.body.append(scrim, sh);
+  sh.querySelectorAll("[data-close]").forEach(b => b.onclick = closeSheet);
+  document.addEventListener("keydown", escClose);
+  const f = sh.querySelector("input,button"); if (f) f.focus({preventScroll:true});
+}
+function escClose(e){ if (e.key === "Escape") closeSheet(); }
+function closeSheet(){ document.querySelectorAll(".scrim,.sheet").forEach(n => n.remove()); document.removeEventListener("keydown", escClose); }
+let toastT = null;
+function toast(msg){
+  let t = $(".toast"); if (!t){ t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.append(t); }
+  t.textContent = msg; clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 3200);
+}
+
+/* ---------- start ---------- */
+$("#menuBtn").onclick = openMenu;
+(function start(){
+  const m = location.hash.match(/home=([0-9a-f]{20,40})/i);
+  TOKEN = m ? m[1].toLowerCase() : lsGet(HOME_KEY);
+  if (m) lsSet(HOME_KEY, TOKEN);
+  else if (TOKEN) history.replaceState(null, "", location.pathname + location.search + "#home=" + TOKEN);
+  render();
+  if (TOKEN) connect();
+  setInterval(tick, 1000);
+  let rz = null;
+  window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (PREFS.view === "map" && DOC) render(); }, 150); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && TOKEN && !CONNECTED) connect(); });
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>
